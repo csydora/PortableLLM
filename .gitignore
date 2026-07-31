@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+
+# VS Code
+.vscode/
+
+# Distribution
+dist/
+build/
+
+# PyInstaller
+*.spec
+
+# Logs
+*.log
+
+# Model files
+portablellm/models/*
+
+# OS files
+.DS_Store
+Thumbs.db
