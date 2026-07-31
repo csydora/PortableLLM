@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 class GenerateRequest(BaseModel):
     prompt: str
-    prompt_file: str = "default.txt"
+    prompt_information: str = ""
     model: int = 1
 
 class GenerateResponse(BaseModel):

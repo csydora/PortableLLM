@@ -5,12 +5,10 @@ from portablellm.utils import application_path
 class LLMService:
 
     def __init__(self, config):
-
         self.config = config
         self.models = {}
 
     def load_model(self, model_number: int):
-
         if model_number in self.models:
             return
 
@@ -29,14 +27,12 @@ class LLMService:
         print(f"Model {model_number} loaded.")
 
     def load_prompt(self, filename: str) -> str:
-
         prompt_path = ( application_path() / "portablellm" / "prompts" / filename )
 
         with open(prompt_path, "r", encoding="utf-8") as file:
             return file.read()
 
     def load_prompt_template(self, filename: str, values: dict[str, str]) -> str:
-
         prompt = self.load_prompt(filename)
 
         for key, value in values.items():
@@ -44,17 +40,23 @@ class LLMService:
 
         return prompt
 
-    def generate(self, prompt: str, prompt_file: str = "default.txt", model: int = 1, ) -> str:
-
+    def generate(self, prompt: str, prompt_file: str, model: int, prompt_information: str, ) -> str:
         self.load_model(model)
-
         llm = self.models[model]
 
-        system_prompt = self.load_prompt_template(
-            prompt_file,
-            {
-                "question": prompt
-            }
+        if not prompt_information or not prompt_information.strip():
+            system_prompt = self.load_prompt_template(
+                            prompt_file,
+                            {
+                                "question": prompt
+                            }
+                        )
+        else:
+            system_prompt = prompt_information
+
+        print(
+            f"System Prompt: {system_prompt[:20] + ("..." if len(system_prompt) > 20 else "")}\n"
+            f"Content: {prompt[:20] + ("..." if len(prompt) > 20 else "")}"
         )
 
         result = llm.create_chat_completion(
@@ -72,9 +74,13 @@ class LLMService:
             max_tokens=self.config.max_tokens,
         )
 
-        content = result["choices"][0]["message"]["content"]
+        returnResult = result["choices"][0]["message"]["content"]
 
-        if "</think>" in content:
-            content = content.split("</think>", 1)[1].strip()
+        if "</think>" in returnResult:
+            returnResult = returnResult.split("</think>", 1)[1].strip()
 
-        return content
+        print(
+            f"Result: {returnResult[:20] + ("..." if len(returnResult) > 20 else "")}"
+        )
+
+        return returnResult
