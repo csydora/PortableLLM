@@ -13,9 +13,6 @@ __pycache__/
 dist/
 build/
 
-# PyInstaller
-*.spec
-
 # Logs
 *.log
 
