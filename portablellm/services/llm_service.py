@@ -1,3 +1,4 @@
+import threading
 from pathlib import Path
 from llama_cpp import Llama
 from portablellm.utils import application_path
@@ -7,24 +8,29 @@ class LLMService:
     def __init__(self, config):
         self.config = config
         self.models = {}
+        self._lock = threading.Lock()
 
     def load_model(self, model_number: int):
         if model_number in self.models:
             return
 
-        model_name = self.config.get_model(model_number)
-        model_path = ( application_path() / "portablellm" / "models" / model_name)
+        with self._lock:
+            if model_number in self.models:
+                return
 
-        print(f"Loading model {model_number}:")
-        print(model_path)
+            model_name = self.config.get_model(model_number)
+            model_path = ( application_path() / "portablellm" / "models" / model_name)
 
-        self.models[model_number] = Llama(
-            model_path=str(model_path),
-            n_ctx=self.config.context_size,
-            verbose=False,
-        )
+            print(f"Loading model {model_number}:")
+            print(model_path)
 
-        print(f"Model {model_number} loaded.")
+            self.models[model_number] = Llama(
+                model_path=str(model_path),
+                n_ctx=self.config.context_size,
+                verbose=False,
+            )
+
+            print(f"Model {model_number} loaded.")
 
     def load_prompt(self, filename: str) -> str:
         prompt_path = ( application_path() / "portablellm" / "prompts" / filename )
@@ -59,20 +65,21 @@ class LLMService:
             f"Content: {prompt[:20] + ("..." if len(prompt) > 20 else "")}"
         )
 
-        result = llm.create_chat_completion(
-            messages=[
-                {
-                    "role": "system",
-                    "content": system_prompt
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=self.config.temperature,
-            max_tokens=self.config.max_tokens,
-        )
+        with self._lock:
+            result = llm.create_chat_completion(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": system_prompt
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=self.config.temperature,
+                max_tokens=self.config.max_tokens,
+            )
 
         returnResult = result["choices"][0]["message"]["content"]
 
