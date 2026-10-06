@@ -21,6 +21,9 @@ build/
 
 # Model files
 portablellm/models/*
+portablellm/embedding_models/*
+logs/
+.server.json
 
 # OS files
 .DS_Store

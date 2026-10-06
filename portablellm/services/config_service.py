@@ -44,3 +44,13 @@ class ConfigService:
     @property
     def port(self):
         return self.config["port"]
+
+    @property
+    def n_gpu_layers(self):
+        return self.config.get("n_gpu_layers", 0)
+
+    @property
+    def embedding_model(self):
+        return application_path() / self.config.get(
+            "embedding_model", "portablellm/embedding_models/all-MiniLM-L6-v2"
+        )

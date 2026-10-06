@@ -4,4 +4,4 @@ from portablellm.services.embedding_service import EmbeddingService
 
 config = ConfigService()
 llm_service = LLMService(config)
-embedding_service = EmbeddingService()
+embedding_service = EmbeddingService(config)

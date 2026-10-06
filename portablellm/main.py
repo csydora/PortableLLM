@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
 from portablellm.api.routes import router
 from portablellm.services.service_provider import config, llm_service
@@ -15,9 +16,11 @@ async def lifespan(app: FastAPI):
 
     print("Models ready.")
 
-    yield
-
-    print("Shutting down...")
+    try:
+        yield
+    finally:
+        llm_service.close()
+        print("Shutting down...")
 
 
 app = FastAPI(
@@ -27,3 +30,13 @@ app = FastAPI(
 )
 
 app.include_router(router)
+
+
+@app.exception_handler(ValueError)
+async def bad_request(request, exc):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+
+@app.exception_handler(FileNotFoundError)
+async def missing_file(request, exc):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})

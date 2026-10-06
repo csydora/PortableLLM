@@ -1,2 +1,5 @@
 @echo off
-taskkill /F /IM python.exe
+cd /d "%~dp0"
+"%~dp0.venv\Scripts\python.exe" "%~dp0server_control.py" stop
+pause
+

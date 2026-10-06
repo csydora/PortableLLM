@@ -26,7 +26,8 @@ def generate(request: GenerateRequest) -> GenerateResponse:
         response=llm_service.generate(
             request.prompt,
             request.prompt_file,
-            request.model
+            request.model,
+            request.max_tokens
         )
     )
 
@@ -35,7 +36,9 @@ def sparql(request: GenerateRequest) -> GenerateResponse:
     return GenerateResponse(
         response=llm_service.generate(
             request.prompt,
-            "sparql.txt"
+            "sparql.txt",
+            request.model,
+            request.max_tokens
         )
     )
 
@@ -44,7 +47,9 @@ def rdf(request: GenerateRequest) -> GenerateResponse:
     return GenerateResponse(
         response=llm_service.generate(
             request.prompt,
-            "rdf.txt"
+            "rdf.txt",
+            request.model,
+            request.max_tokens
         )
     )
 
