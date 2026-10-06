@@ -6,6 +6,8 @@ class EmbeddingService:
         self.model_path = config.embedding_model
         self.model = None
         self.lock = RLock()
+        with self.lock:
+            self._load()
 
     def _load(self):
         if self.model is None:

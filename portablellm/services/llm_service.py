@@ -21,7 +21,7 @@ class LLMService:
                 raise RuntimeError("GPU offload unavailable. Install the CUDA wheel or set n_gpu_layers to 0.")
             self.close()
             print(f"Loading model {model_number}: {model_path}", flush=True)
-            print(f"GPU_LOAD_BEGIN model={model_number} file={model_path.name} n_gpu_layers={self.config.n_gpu_layers}", file=sys.stderr, flush=True)
+            # print(f"GPU_LOAD_BEGIN model={model_number} file={model_path.name} n_gpu_layers={self.config.n_gpu_layers}", file=sys.stderr, flush=True)
             self.models[model_number] = Llama(
                 model_path=str(model_path),
                 n_ctx=self.config.context_size,
@@ -30,7 +30,7 @@ class LLMService:
                 n_threads=self.config.config.get("n_threads", 8),
                 verbose=self.config.config.get("verbose", False),
             )
-            print(f"GPU_LOAD_READY model={model_number} file={model_path.name}", file=sys.stderr, flush=True)
+            # print(f"GPU_LOAD_READY model={model_number} file={model_path.name}", file=sys.stderr, flush=True)
 
     def close(self):
         with self.lock:
@@ -51,7 +51,7 @@ class LLMService:
             prompt = prompt.replace(f"{{{key}}}", value)
         return prompt
 
-    def generate(self, prompt: str, max_tokens: int, prompt_information: str, prompt_file: str = "chat.txt", model: int = 1) -> str:
+    def generate(self, prompt: str, prompt_information: str, prompt_file: str = "chat.txt", model: int = 1) -> str:
         if not prompt_information or not prompt_information.strip():
             system_prompt = self.load_prompt_template(prompt_file, {"question": prompt})
         else:
@@ -70,7 +70,7 @@ class LLMService:
                     {"role": "user", "content": prompt},
                 ],
                 temperature=self.config.temperature,
-                max_tokens=max_tokens or self.config.max_tokens,
+                max_tokens=self.config.max_tokens,
             )
             choice = result["choices"][0]
             content = choice["message"].get("content") or ""

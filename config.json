@@ -12,10 +12,10 @@
     "preload_models": [3],
     "context_size": 8192,
     "n_gpu_layers": 0,
+    "embedding_model": "portablellm/models/all-MiniLM-L6-v2",
     "n_batch": 256,
     "n_threads": 8,
-    "verbose": true,
-    "embedding_model": "portablellm/embedding_models/all-MiniLM-L6-v2",
+    "verbose": false,
     "temperature": 0.2,
     "max_tokens": 1024
 }

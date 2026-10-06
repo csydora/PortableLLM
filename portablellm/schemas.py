@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 class GenerateRequest(BaseModel):
-    prompt: str
+    prompt: str = ""
     prompt_information: str = ""
     prompt_file: str = "chat.txt"
     model: int = 1
