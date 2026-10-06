@@ -1,4 +1,5 @@
 from threading import RLock
+import sys
 from llama_cpp import Llama, llama_supports_gpu_offload
 from portablellm.utils import application_path
 
@@ -20,6 +21,7 @@ class LLMService:
                 raise RuntimeError("GPU offload unavailable. Install the CUDA wheel or set n_gpu_layers to 0.")
             self.close()
             print(f"Loading model {model_number}: {model_path}", flush=True)
+            print(f"GPU_LOAD_BEGIN model={model_number} file={model_path.name} n_gpu_layers={self.config.n_gpu_layers}", file=sys.stderr, flush=True)
             self.models[model_number] = Llama(
                 model_path=str(model_path),
                 n_ctx=self.config.context_size,
@@ -28,6 +30,7 @@ class LLMService:
                 n_threads=self.config.config.get("n_threads", 8),
                 verbose=self.config.config.get("verbose", False),
             )
+            print(f"GPU_LOAD_READY model={model_number} file={model_path.name}", file=sys.stderr, flush=True)
 
     def close(self):
         with self.lock:
