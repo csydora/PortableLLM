@@ -1,337 +1,171 @@
 # PortableLLM
 
-> 本机已配置版本：请优先阅读 [LOCAL_SETUP.md](LOCAL_SETUP.md)。
-> 双击 `start_server.bat` 启动，访问 http://127.0.0.1:8000/docs；双击 `stop_server.bat` 停止。
-> 下方保留上游说明，其中原始模型示例和 EXE 构建步骤不代表本次部署配置。
+A small local REST API for GGUF language models and sentence similarity.
+Built with FastAPI, llama-cpp-python, and Sentence Transformers.
 
-PortableLLM is a lightweight local REST API for running Large Language Models (LLMs) using `llama-cpp-python`. It provides a simple HTTP interface for text generation and semantic similarity without requiring Ollama or any external services.
+## Layout
 
-## Features
-
-- Local LLM inference using GGUF models
-- Multiple model support
-- Prompt templates
-- Sentence similarity using Sentence Transformers
-- Dictionary similarity scoring
-- FastAPI REST API
-- Swagger documentation (`/docs`)
-- Standalone executable build
-
----
-
-## Requirements
-
-- Python 3.12+
-- Git
-- Windows (currently tested)
-- At least one GGUF model
-- An embedding model (Sentence Transformers)
-
----
-
-## Installation
-
-Clone the repository:
-
-```bash
-git clone <repository-url>
-cd PortableLLM
+```text
+PortableLLM/
+  README.md
+  config.json
+  requirements.txt
+  run.py
+  start_server.bat
+  stop_server.bat
+  update_dependencies.bat
+  portablellm/
+    __init__.py          # Windows CUDA DLL registration
+    main.py              # FastAPI application and model lifecycle
+    schemas.py           # Request and response definitions
+    server_control.py    # Background process management
+    utils.py             # Application paths
+    api/                 # HTTP routes
+    services/            # Configuration, generation, and embeddings
+    prompts/             # System prompt templates
+    models/              # Local GGUF weights (Git-ignored)
+    embedding_models/    # Local embedding weights (Git-ignored)
+  logs/                  # Runtime logs (Git-ignored)
+  .venv/                 # Python environment (Git-ignored)
 ```
 
-Create a virtual environment:
+## Run
 
-```bash
-python -m venv .venv
+The existing local installation is ready to use:
+
+1. Run `start_server.bat`.
+2. Open [API documentation](http://127.0.0.1:8000/docs).
+3. Expand `POST /generate`, select **Try it out**, and submit:
+
+```json
+{
+  "prompt": "Explain how a local language model works.",
+  "model": 2,
+  "max_tokens": 512
+}
 ```
 
-Activate it:
+Use model 1 for Qwen3.5-4B or model 2 for Qwen3.5-9B (the default).
+Only one generation model stays loaded; switching releases the previous model.
+Run `stop_server.bat` to stop the service. Closing the browser does not stop it.
+
+For foreground development, stop the background service first, then run:
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
+.\.venv\Scripts\python.exe run.py
 ```
 
-Install dependencies:
+Background management is also available through the project environment:
+`python -m portablellm.server_control start` or `stop`.
+The controller verifies process identity before stopping it.
 
-```bash
-pip install -r requirements.txt
+## Install
+
+Tested with Windows 11, Python 3.12, and an NVIDIA RTX 4060 Laptop GPU (8GB).
+
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
----
+Alternatively, `update_dependencies.bat` creates the environment if needed and
+installs the pinned dependencies. Standalone EXE packaging is not configured.
 
-## Models
+### Models
 
-### LLM Models
+Place these files in `portablellm/models/`:
 
-Place GGUF models inside:
+| ID | Filename | Pinned download |
+|---|---|---|
+| 1 | Qwen3.5-4B-Q4_K_M.gguf | [4B](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/e87f176479d0855a907a41277aca2f8ee7a09523/Qwen3.5-4B-Q4_K_M.gguf) |
+| 2 | Qwen3.5-9B-Q4_K_M.gguf | [9B](https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/3885219b6810b007914f3a7950a8d1b469d598a5/Qwen3.5-9B-Q4_K_M.gguf) |
 
-```
-portablellm/models/
-```
+SHA256 checksums:
 
-Example:
-
-```
-portablellm/models/
-    Qwen_Qwen3-8B-Q4_K_M.gguf
-    qwen2.5-3b-instruct-q4_k_m.gguf
-```
-
-Configure them in `config.json`.
-
----
-
-### Embedding Model
-
-Download the Sentence Transformer model:
-
-```
-sentence-transformers/all-MiniLM-L6-v2
+```text
+4B  00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4
+9B  03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8
 ```
 
-Place it in:
+For similarity endpoints, download the embedding model once:
 
-```
-portablellm/embedding_models/
-    models--sentence-transformers--all-MiniLM-L6-v2/
+```powershell
+.\.venv\Scripts\python.exe -c "from huggingface_hub import snapshot_download; snapshot_download('sentence-transformers/all-MiniLM-L6-v2', revision='1110a243fdf4706b3f48f1d95db1a4f5529b4d41', local_dir='portablellm/embedding_models/all-MiniLM-L6-v2', allow_patterns=['*.json','*.txt','*.safetensors','1_Pooling/*'])"
 ```
 
----
+The embedding model loads on CPU when first requested. Generation works without
+it. All models are already present locally. `run.py` enables Hugging Face offline
+mode for normal operation.
 
 ## Configuration
 
-All settings are stored in:
-
-```
-config.json
-```
-
-Example:
-
-```json
-{
-    "host": "127.0.0.1",
-    "port": 8000,
-
-    "models": {
-        "1": "Qwen_Qwen3-8B-Q4_K_M.gguf",
-        "2": "qwen2.5-3b-instruct-q4_k_m.gguf"
-    },
-
-    "preload_models": [1],
-
-    "context_size": 4096,
-    "temperature": 0.2,
-    "max_tokens": 1024
-}
-```
-
----
-
-## Running
-
-Start the server:
-
-```powershell
-start_server.bat
-```
-
-or
-
-```powershell
-uvicorn portablellm.main:app --reload
-```
-
-The API will be available at:
-
-```
-http://127.0.0.1:8000
-```
-
-Swagger documentation:
-
-```
-http://127.0.0.1:8000/docs
-```
-
----
-
-## Building
-
-Build the standalone executable:
-
-```powershell
-build.bat
-```
-
-The output is placed in:
-
-```
-build/
-```
-
-Run the server with:
-
-```
-PortableLLM.exe
-```
-
----
-
-## API Endpoints
-
-### Generate Text
-
-```
-POST /generate
-```
-
-```json
-{
-    "prompt": "Tell me something interesting.",
-    "prompt_file": "default.txt",
-    "model": 1
-}
-```
-
-Returns:
-
-```json
-{
-    "response": "Octopuses have three hearts..."
-}
-```
-
----
-
-### RDF Generation
-
-```
-POST /rdf
-```
-
-```json
-{
-    "prompt": "John is 25 years old.",
-    "model": 1
-}
-```
-
-Returns:
-
-```json
-{
-    "response": "@prefix ex: <https://example.com/> .\n@prefix foaf: <http://xmlns.com/foaf/0.1/> .\n\nex:John foaf:age 25 ."
-}
-```
-
----
-
-### SPARQL Generation
-
-```
-POST /sparql
-```
-
-```json
-{
-    "prompt": "Find all walls higher than 3 metres.",
-    "model": 1
-}
-```
-
-Returns:
-
-```json
-{
-    "response": "SELECT ?wall WHERE {\n  ?wall rdf:type ex:Wall .\n  ?wall ex:height ?height .\n  FILTER(?height > 3)\n}"
-}
-```
-
----
-
-### Sentence Similarity
-
-```
-POST /similarity
-```
-
-```json
-{
-    "text1": "The wall is concrete.",
-    "text2": "The wall is made of concrete."
-}
-```
-
-Returns:
-
-```json
-{
-    "score": 0.94
-}
-```
-
----
-
-### Dictionary Similarity
-
-```
-POST /dictionary_similarity
-```
-
-```json
-{
-    "sentence": "The wall is reinforced concrete.",
-    "dictionary": {
-        "Concrete": "A composite construction material.",
-        "Steel": "An alloy primarily consisting of iron."
-    }
-}
-```
-
-Returns:
-
-```json
-{
-    "scores": {
-        "Concrete": 0.96,
-        "Steel": 0.43
-    }
-}
-```
-
----
-
-## Project Structure
-
-```
-PortableLLM/
-│
-├── config.json
-├── build.bat
-├── start_server.bat
-├── run.py
-│
-└── portablellm/
-    ├── api/
-    ├── models/
-    ├── embedding_models/
-    ├── prompts/
-    ├── services/
-    ├── schemas.py
-    └── main.py
-```
-
----
-
-## Notes
-
-- GGUF models are not included in the repository.
-- Embedding models are not included in the repository.
-- Large model files should be downloaded separately.
-- The API is intended to run locally by default. To expose it to other machines, set `"host": "0.0.0.0"` in `config.json`.
-
----
-
-## License
-
-MIT License.
+Edit `config.json`, then restart.
+
+| Setting | Current value | Purpose |
+|---|---|---|
+| host / port | 127.0.0.1 / 8000 | Local API address |
+| models | IDs 1 and 2 | GGUF filenames |
+| preload_models | [2] | Load 9B at startup |
+| n_gpu_layers | -1 | Request all model layers on GPU |
+| context_size | 4096 | Context window in tokens |
+| n_batch | 256 | Prompt processing batch size |
+| n_threads | 8 | CPU worker threads |
+| temperature | 0.2 | Sampling temperature |
+| max_tokens | 1024 | Default generation limit |
+| verbose | true | Engine diagnostics |
+
+The API default model is defined in `portablellm/schemas.py`.
+Requests may override max_tokens. Context overflow and truncated output return
+HTTP 400. Larger contexts require more memory.
+
+## GPU acceleration
+
+FastAPI -> llama-cpp-python -> llama.cpp CUDA -> NVIDIA GPU.
+
+- `requirements.txt` pins the CUDA 12.4 wheel and NVIDIA runtime/cuBLAS libraries.
+- `portablellm/__init__.py` registers their DLL search paths on Windows.
+- `portablellm/services/config_service.py` reads n_gpu_layers.
+- `portablellm/services/llm_service.py` passes it to Llama(), checks backend
+  support, serializes requests, and releases the previous model on a switch.
+
+The backend includes `llama_cpp/lib/ggml-cuda.dll`; NVIDIA runtime libraries
+reside under `.venv/Lib/site-packages/nvidia/`. A global CUDA Toolkit is not
+required. Q4_K_M reduces weight size; CUDA enables GPU execution. Tokenization
+and request handling still involve the CPU.
+
+Check `logs/server.err.log` for `offloaded 33/33 layers to GPU` and CUDA buffers.
+Use `nvidia-smi` during generation to observe GPU activity.
+Backend capability alone does not prove that a request used the GPU.
+
+Deployment checks on 2026-10-06 confirmed 33/33 GPU layers for both models.
+Short decode samples measured about 66 tokens/s (4B) and 39 tokens/s (9B).
+These are historical local samples, not guaranteed performance or CPU comparisons.
+
+## API
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | / | Service health |
+| POST | /generate | Text generation with a prompt template |
+| POST | /rdf | RDF generation prompt |
+| POST | /sparql | SPARQL generation prompt |
+| POST | /similarity | Cosine similarity between two texts |
+| POST | /dictionary_similarity | Score definitions against a sentence |
+
+See /docs for request schemas. Generation returns `{"response": "..."}`.
+RDF/SPARQL endpoints do not validate or execute generated text. Each request is
+independent; automatic conversation history and image input are not configured.
+
+## Maintenance
+
+Use English for project documentation, comments, examples, and maintenance
+messages. Runtime inputs and model outputs may use any supported language.
+
+Keep application code in portablellm/ and configuration and launch entry points
+at the root. Remove one-off download/verification scripts and deployment reports
+after use. Keep model provenance in this README and dependency versions in
+requirements.txt.
+
+Runtime logs are overwritten at startup. Model weights, logs, the virtual
+environment, Python caches, and .server.json are excluded from Git.
+Third-party packages and model assets are not project-maintained source.

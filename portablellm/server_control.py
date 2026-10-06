@@ -9,7 +9,7 @@ from urllib.request import urlopen
 
 import psutil
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 STATE = ROOT / ".server.json"
 RUN = ROOT / "run.py"
 PYTHON = Path(sys.executable).resolve()
