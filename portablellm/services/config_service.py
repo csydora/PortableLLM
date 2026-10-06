@@ -51,6 +51,4 @@ class ConfigService:
 
     @property
     def embedding_model(self):
-        return application_path() / self.config.get(
-            "embedding_model", "portablellm/embedding_models/all-MiniLM-L6-v2"
-        )
+        return application_path() / self.config.get("embedding_model")
