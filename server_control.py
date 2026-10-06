@@ -14,7 +14,6 @@ STATE = ROOT / ".server.json"
 RUN = ROOT / "run.py"
 PYTHON = Path(sys.executable).resolve()
 
-
 def owned_process():
     if not STATE.exists():
         return None

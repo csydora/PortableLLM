@@ -3,10 +3,9 @@ from pydantic import BaseModel, Field
 class GenerateRequest(BaseModel):
     prompt: str
     prompt_information: str = ""
-    prompt: str = Field(min_length=1)
-    prompt_file: str = "default.txt"
+    prompt_file: str = "chat.txt"
     model: int = 1
-    max_tokens: int | None = Field(default=None, ge=1, le=4096)
+    max_tokens: int = 1024
 
 class GenerateResponse(BaseModel):
     response: str

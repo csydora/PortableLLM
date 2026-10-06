@@ -25,12 +25,10 @@ def generate(request: GenerateRequest) -> GenerateResponse:
     return GenerateResponse(
         response=llm_service.generate(
             request.prompt,
+            request.max_tokens,
+            request.prompt_information,
             "chat.txt",
             request.model,
-            request.prompt_information
-            request.prompt_file,
-            request.model,
-            request.max_tokens
         )
     )
 
@@ -39,10 +37,10 @@ def sparql(request: GenerateRequest) -> GenerateResponse:
     return GenerateResponse(
         response=llm_service.generate(
             request.prompt,
+            request.max_tokens,
+            request.prompt_information,
             "sparql.txt",
             request.model,
-            request.prompt_information
-            request.max_tokens
         )
     )
 
@@ -51,16 +49,15 @@ def rdf(request: GenerateRequest) -> GenerateResponse:
     return GenerateResponse(
         response=llm_service.generate(
             request.prompt,
+            request.max_tokens,
+            request.prompt_information,
             "rdf.txt",
             request.model,
-            request.prompt_information
-            request.max_tokens
         )
     )
 
 @router.post("/similarity")
 def similarity( request: SimilarityRequest ) -> SimilarityResponse:
-
     return SimilarityResponse(
         score=embedding_service.similarity(
             request.text1,
@@ -70,7 +67,6 @@ def similarity( request: SimilarityRequest ) -> SimilarityResponse:
 
 @router.post("/dictionary_similarity")
 def dictionary_similarity( request: DictionarySimilarityRequest ) -> DictionarySimilarityResponse:
-
     return DictionarySimilarityResponse(
         scores=embedding_service.score_dictionary(
             request.sentence,

@@ -10,9 +10,9 @@ class LLMService:
         self.lock = RLock()
 
     def load_model(self, model_number: int):
+        if model_number in self.models:
+            return
         with self.lock:
-            if model_number in self.models:
-                return
             model_path = application_path() / "portablellm" / "models" / self.config.get_model(model_number)
             if not model_path.is_file():
                 raise FileNotFoundError(f"Model not found: {model_path}")
@@ -48,9 +48,17 @@ class LLMService:
             prompt = prompt.replace(f"{{{key}}}", value)
         return prompt
 
-    def generate(self, prompt: str, prompt_file: str = "default.txt", model: int = 1,
-                 max_tokens: int | None = None) -> str:
-        system_prompt = self.load_prompt_template(prompt_file, {"question": prompt})
+    def generate(self, prompt: str, max_tokens: int, prompt_information: str, prompt_file: str = "chat.txt", model: int = 1) -> str:
+        if not prompt_information or not prompt_information.strip():
+            system_prompt = self.load_prompt_template(prompt_file, {"question": prompt})
+        else:
+            system_prompt = prompt_information
+        
+        print(
+            f"System Prompt: {system_prompt[:20] + ("..." if len(system_prompt) > 20 else "")}\n"
+            f"Content: {prompt[:20] + ("..." if len(prompt) > 20 else "")}"
+        )
+
         with self.lock:
             self.load_model(model)
             result = self.models[model].create_chat_completion(
@@ -69,5 +77,8 @@ class LLMService:
                 raise ValueError("Output limit reached. Increase max_tokens or shorten the prompt.")
             if not content.strip():
                 raise ValueError("Model returned no final answer")
-            return content.strip()
+
+            returnResult = content.strip()
+            print(f"Result: {returnResult[:20] + ("..." if len(returnResult) > 20 else "")}")
+            return returnResult
 
