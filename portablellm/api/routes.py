@@ -28,6 +28,9 @@ def generate(request: GenerateRequest) -> GenerateResponse:
             "chat.txt",
             request.model,
             request.prompt_information
+            request.prompt_file,
+            request.model,
+            request.max_tokens
         )
     )
 
@@ -39,6 +42,7 @@ def sparql(request: GenerateRequest) -> GenerateResponse:
             "sparql.txt",
             request.model,
             request.prompt_information
+            request.max_tokens
         )
     )
 
@@ -50,6 +54,7 @@ def rdf(request: GenerateRequest) -> GenerateResponse:
             "rdf.txt",
             request.model,
             request.prompt_information
+            request.max_tokens
         )
     )
 

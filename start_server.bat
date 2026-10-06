@@ -1,5 +1,9 @@
 @echo off
 cd /d "%~dp0"
-call .venv\Scripts\activate.bat
-uvicorn portablellm.main:app --reload
+"%~dp0.venv\Scripts\python.exe" "%~dp0server_control.py" start
+if errorlevel 1 (
+    pause
+    exit /b 1
+)
 pause
+

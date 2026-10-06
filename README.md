@@ -1,5 +1,9 @@
 # PortableLLM
 
+> 本机已配置版本：请优先阅读 [LOCAL_SETUP.md](LOCAL_SETUP.md)。
+> 双击 `start_server.bat` 启动，访问 http://127.0.0.1:8000/docs；双击 `stop_server.bat` 停止。
+> 下方保留上游说明，其中原始模型示例和 EXE 构建步骤不代表本次部署配置。
+
 PortableLLM is a lightweight local REST API for running Large Language Models (LLMs) using `llama-cpp-python`. It provides a simple HTTP interface for text generation and semantic similarity without requiring Ollama or any external services.
 
 ## Features
