@@ -5,7 +5,6 @@ class GenerateRequest(BaseModel):
     prompt_information: str = ""
     prompt_file: str = "chat.txt"
     model: int = 1
-    max_tokens: int = 1024
 
 class GenerateResponse(BaseModel):
     response: str

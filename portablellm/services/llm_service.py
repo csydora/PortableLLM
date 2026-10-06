@@ -2,7 +2,7 @@ from threading import RLock
 import sys
 from llama_cpp import Llama, llama_supports_gpu_offload
 from portablellm.utils import application_path
-
+import time 
 
 class LLMService:
     def __init__(self, config):
@@ -17,15 +17,20 @@ class LLMService:
             model_path = application_path() / "portablellm" / "models" / self.config.get_model(model_number)
             if not model_path.is_file():
                 raise FileNotFoundError(f"Model not found: {model_path}")
+            self.n_gpu_layers = self.config.n_gpu_layers
             if self.config.n_gpu_layers != 0 and not llama_supports_gpu_offload():
-                raise RuntimeError("GPU offload unavailable. Install the CUDA wheel or set n_gpu_layers to 0.")
+                print("GPU offload unavailable. Setting n_gpu_layers to 0.")
+                self.n_gpu_layers = 0
+
+            # Might be a good spot to determine some of the parameters based on the hardware...
+
             self.close()
             print(f"Loading model {model_number}: {model_path}", flush=True)
-            # print(f"GPU_LOAD_BEGIN model={model_number} file={model_path.name} n_gpu_layers={self.config.n_gpu_layers}", file=sys.stderr, flush=True)
+            # print(f"GPU_LOAD_BEGIN model={model_number} file={model_path.name} n_gpu_layers={self.n_gpu_layers}", file=sys.stderr, flush=True)
             self.models[model_number] = Llama(
                 model_path=str(model_path),
                 n_ctx=self.config.context_size,
-                n_gpu_layers=self.config.n_gpu_layers,
+                n_gpu_layers=self.n_gpu_layers,
                 n_batch=self.config.config.get("n_batch", 256),
                 n_threads=self.config.config.get("n_threads", 8),
                 verbose=self.config.config.get("verbose", False),
@@ -61,6 +66,7 @@ class LLMService:
             f"System Prompt: {system_prompt[:20] + ("..." if len(system_prompt) > 20 else "")}\n"
             f"Content: {prompt[:20] + ("..." if len(prompt) > 20 else "")}"
         )
+        start = time.perf_counter()          # start the timer
 
         with self.lock:
             self.load_model(model)
@@ -83,5 +89,7 @@ class LLMService:
 
             returnResult = content.strip()
             print(f"Result: {returnResult[:20] + ("..." if len(returnResult) > 20 else "")}")
+            elapsed = time.perf_counter() - start  # stop the timer
+            print(f"Inference time: {elapsed:.2f} seconds")
             return returnResult
 
