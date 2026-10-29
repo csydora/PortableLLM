@@ -9,13 +9,19 @@ Built with FastAPI, llama-cpp-python, and Sentence Transformers.
 PortableLLM/
   README.md
   config.json
-  requirements.txt
   run.py
   start_server.bat
   stop_server.bat
   update_dependencies.bat
+  installation/
+    requirements.txt          # Common dependencies
+    requirements-cuda.txt     # CUDA backend
+    requirements-hip.txt      # AMD HIP backend
+    requirements-vulkan.txt   # Vulkan backend
+    requirements-cpu.txt      # CPU fallback
+    install_gpu_backend.ps1   # Selects the llama.cpp backend
   portablellm/
-    __init__.py          # Windows CUDA DLL registration
+    __init__.py          # Windows CUDA/HIP DLL registration
     main.py              # FastAPI application and model lifecycle
     schemas.py           # Request and response definitions
     server_control.py    # Background process management
@@ -61,15 +67,17 @@ The controller verifies process identity before stopping it.
 
 ## Install
 
-Tested with Windows 11, Python 3.12, and an NVIDIA RTX 4060 Laptop GPU (8GB).
+Tested with Windows 11 and Python 3.12. Backend selection can be automatic or
+set explicitly in `config.json`.
 
 ```powershell
-py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\update_dependencies.bat
 ```
 
-Alternatively, `update_dependencies.bat` creates the environment if needed and
-installs the pinned dependencies. Standalone EXE packaging is not configured.
+The installer creates `.venv` if needed, installs common dependencies, then
+selects the pinned llama.cpp backend wheel. The `installation/` folder contains
+the common dependency list and the CUDA, HIP, Vulkan, and CPU backend lists.
+Standalone EXE packaging is not configured.
 
 ### Models
 
@@ -105,14 +113,15 @@ Edit `config.json`, then restart.
 |---|---|---|
 | host / port | 127.0.0.1 / 8000 | Local API address |
 | models | IDs 1 and 2 | GGUF filenames |
-| preload_models | [2] | Load 9B at startup |
-| n_gpu_layers | -1 | Request all model layers on GPU |
-| context_size | 4096 | Context window in tokens |
+| preload_models | [3] | Load model 3 at startup |
+| gpu_backend | auto | Select CUDA, HIP, Vulkan, or CPU during dependency setup |
+| n_gpu_layers | -1 | Request all model layers on GPU, with automatic fallback |
+| context_size | 8192 | Context window in tokens |
 | n_batch | 256 | Prompt processing batch size |
 | n_threads | 8 | CPU worker threads |
 | temperature | 0.2 | Sampling temperature |
-| max_tokens | 1024 | Default generation limit |
-| verbose | true | Engine diagnostics |
+| max_tokens | 2048 | Default generation limit |
+| verbose | false | Engine diagnostics |
 
 The API default model is defined in `portablellm/schemas.py`.
 Requests may override max_tokens. Context overflow and truncated output return
@@ -120,26 +129,30 @@ HTTP 400. Larger contexts require more memory.
 
 ## GPU acceleration
 
-FastAPI -> llama-cpp-python -> llama.cpp CUDA -> NVIDIA GPU.
+FastAPI -> llama-cpp-python -> llama.cpp -> selected GPU backend.
 
-- `requirements.txt` pins the CUDA 12.4 wheel and NVIDIA runtime/cuBLAS libraries.
-- `portablellm/__init__.py` registers their DLL search paths on Windows.
-- `portablellm/services/config_service.py` reads n_gpu_layers.
-- `portablellm/services/llm_service.py` passes it to Llama(), checks backend
-  support, serializes requests, and releases the previous model on a switch.
+- `gpu_backend: auto` selects CUDA for NVIDIA, HIP for AMD, and CPU when neither
+  vendor is detected. Set it to `cuda`, `hip`, `vulkan`, or `cpu` to choose
+  manually, then rerun `update_dependencies.bat`.
+- The AMD Radeon AI PRO R9700 is supported by AMD's Windows HIP SDK. Install a
+  compatible AMD graphics driver and HIP runtime before setup. The HIP wheel
+  also needs the Windows LLVM OpenMP runtime (`libomp140.x86_64.dll`); the app
+  searches installed AMD SDK and Visual Studio runtime folders for it. Setup
+  tries the HIP wheel first for AMD, then Vulkan, then CPU if installation or
+  import fails. Vulkan is also available for NVIDIA and AMD GPUs.
+- `n_gpu_layers: -1` asks llama.cpp to offload all model layers. Startup prints
+  a concise offloaded layer count. Set `verbose: true` to show full llama.cpp
+  diagnostics and build details. If full GPU loading fails, the service probes
+  lower layer counts and keeps the largest configuration that loads; CPU is the
+  final fallback.
+- The CUDA wheel and NVIDIA runtime libraries are pinned in
+  `installation/requirements-cuda.txt`. AMD uses the pinned HIP Radeon wheel,
+  with installed HIP runtime DLL paths registered on Windows. Vulkan uses a
+  pinned cross-vendor wheel.
 
-The backend includes `llama_cpp/lib/ggml-cuda.dll`; NVIDIA runtime libraries
-reside under `.venv/Lib/site-packages/nvidia/`. A global CUDA Toolkit is not
-required. Q4_K_M reduces weight size; CUDA enables GPU execution. Tokenization
-and request handling still involve the CPU.
-
-Check `logs/server.err.log` for `offloaded 33/33 layers to GPU` and CUDA buffers.
-Use `nvidia-smi` during generation to observe GPU activity.
-Backend capability alone does not prove that a request used the GPU.
-
-Deployment checks on 2026-10-06 confirmed 33/33 GPU layers for both models.
-Short decode samples measured about 66 tokens/s (4B) and 39 tokens/s (9B).
-These are historical local samples, not guaranteed performance or CPU comparisons.
+Q4_K_M reduces weight size. GPU acceleration handles model layers while
+tokenization and request handling still involve the CPU. Model size, context
+length, free VRAM, and other GPU workloads affect how many layers fit.
 
 ## API
 
@@ -161,10 +174,10 @@ independent; automatic conversation history and image input are not configured.
 Use English for project documentation, comments, examples, and maintenance
 messages. Runtime inputs and model outputs may use any supported language.
 
-Keep application code in portablellm/ and configuration and launch entry points
-at the root. Remove one-off download/verification scripts and deployment reports
-after use. Keep model provenance in this README and dependency versions in
-requirements.txt.
+Keep application code in portablellm/, configuration and launch entry points at
+the root, and dependency installation files in installation/. Remove one-off
+download/verification scripts and deployment reports after use. Keep model
+provenance in this README and dependency versions in installation/requirements.txt.
 
 Runtime logs are overwritten at startup. Model weights, logs, the virtual
 environment, Python caches, and .server.json are excluded from Git.
