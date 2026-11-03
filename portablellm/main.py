@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from portablellm.api.routes import router
 from portablellm.services.service_provider import config, llm_service
+from portablellm.services.llm_service import LLMCapacityError
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -40,3 +41,8 @@ async def bad_request(request, exc):
 @app.exception_handler(FileNotFoundError)
 async def missing_file(request, exc):
     return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(LLMCapacityError)
+async def capacity_full(request, exc):
+    return JSONResponse(status_code=429, content={"detail": str(exc)})

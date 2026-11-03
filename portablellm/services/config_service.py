@@ -50,5 +50,26 @@ class ConfigService:
         return self.config.get("n_gpu_layers", 0)
 
     @property
+    def max_parallel_requests(self):
+        value = int(self.config.get("max_parallel_requests", 1))
+        if value < 1:
+            raise ValueError("max_parallel_requests must be at least 1")
+        return value
+
+    @property
+    def max_queued_requests(self):
+        value = int(self.config.get("max_queued_requests", 8))
+        if value < 0:
+            raise ValueError("max_queued_requests cannot be negative")
+        return value
+
+    @property
+    def parallel_memory_reserve_gb(self):
+        value = float(self.config.get("parallel_memory_reserve_gb", 3.0))
+        if value < 0:
+            raise ValueError("parallel_memory_reserve_gb cannot be negative")
+        return value
+
+    @property
     def embedding_model(self):
         return application_path() / self.config.get("embedding_model")

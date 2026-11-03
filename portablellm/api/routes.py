@@ -1,5 +1,10 @@
 from fastapi import APIRouter
-from portablellm.schemas import GenerateRequest, GenerateResponse
+from portablellm.schemas import (
+    GenerateRequest,
+    GenerateResponse,
+    ParallelCapacityResponse,
+    SimpleCapacityResponse,
+)
 from portablellm.services.service_provider import (
     llm_service,
     embedding_service
@@ -19,6 +24,16 @@ def root():
     return {
         "status": "Running"
     }
+
+@router.get("/capacity", response_model=ParallelCapacityResponse)
+def capacity() -> ParallelCapacityResponse:
+    return ParallelCapacityResponse(**llm_service.get_capacity())
+
+@router.get("/capacity/simple", response_model=SimpleCapacityResponse)
+def simple_capacity() -> SimpleCapacityResponse:
+    return SimpleCapacityResponse(
+        max_parallel_requests=llm_service.get_capacity()["max_parallel_requests"]
+    )
 
 @router.post("/generate")
 def generate(request: GenerateRequest) -> GenerateResponse:

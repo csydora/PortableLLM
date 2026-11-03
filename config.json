@@ -16,6 +16,9 @@
     "embedding_model": "portablellm/models/all-MiniLM-L6-v2",
     "n_batch": 256,
     "n_threads": 8,
+    "max_parallel_requests": 8,
+    "max_queued_requests": 8,
+    "parallel_memory_reserve_gb": 3.0,
     "verbose": false,
     "temperature": 0.2,
     "max_tokens": 2048

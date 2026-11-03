@@ -118,7 +118,10 @@ Edit `config.json`, then restart.
 | n_gpu_layers | -1 | Request all model layers on GPU, with automatic fallback |
 | context_size | 8192 | Context window in tokens |
 | n_batch | 256 | Prompt processing batch size |
-| n_threads | 8 | CPU worker threads |
+| n_threads | 8 | CPU thread budget shared across parallel slots |
+| max_parallel_requests | 8 | Upper limit for model contexts; startup reduces this to the number that fits |
+| max_queued_requests | 8 | Maximum waiting generation requests before new requests receive HTTP 429 |
+| parallel_memory_reserve_gb | 3.0 | Minimum system memory to keep available after startup loads the model contexts |
 | temperature | 0.2 | Sampling temperature |
 | max_tokens | 2048 | Default generation limit |
 | verbose | false | Engine diagnostics |
@@ -154,11 +157,45 @@ Q4_K_M reduces weight size. GPU acceleration handles model layers while
 tokenization and request handling still involve the CPU. Model size, context
 length, free VRAM, and other GPU workloads affect how many layers fit.
 
+## Parallel generation
+
+At startup, the server estimates a safe context count from the configured cap,
+system memory, model size, and context size, then loads independent llama.cpp
+contexts up to that limit. If another context cannot load, it keeps the
+contexts that loaded successfully. NVIDIA free memory is reported when
+`nvidia-smi` is available; GPU allocation is also checked by llama.cpp while
+loading each context. AMD and integrated GPUs do not expose a consistent
+cross-vendor free-memory API here, so their capacity is based on system memory
+and successful context loading.
+
+Each request uses its own context, so up to the reported number can generate at
+the same time. Each extra context uses additional memory; requests may run more
+slowly individually when they share the GPU. `max_parallel_requests` is a cap,
+not a promise that every machine can run that many. The default is 4. If a
+request specifies a different model, the service waits for in-flight requests,
+replaces the active model pool, and recalculates capacity for that model.
+
+Call `GET /capacity` after startup to read the active model's effective
+`max_parallel_requests`, configured cap, running and queued request counts,
+GPU layers per context, safety-trimmed slot count, and machine resource
+information. Startup removes a trailing slot if it falls below the preceding
+slots' GPU offload, and keeps removing slots if available system memory is below
+`parallel_memory_reserve_gb` (default 3 GiB). The startup snapshot is also
+written to `logs/parallel_capacity.json`. If the waiting queue reaches
+`max_queued_requests`, new generation requests receive HTTP 429 and can retry
+after a current request finishes.
+
+Applications can call `GET http://127.0.0.1:8000/capacity/simple` to get only
+`{"max_parallel_requests": N}` for scheduling. `GET /capacity` returns the
+detailed diagnostic response.
+
 ## API
 
 | Method | Path | Purpose |
 |---|---|---|
 | GET | / | Service health |
+| GET | /capacity | Effective parallel generation capacity and current queue state |
+| GET | /capacity/simple | Effective parallel generation capacity only |
 | POST | /generate | Text generation with a prompt template |
 | POST | /rdf | RDF generation prompt |
 | POST | /sparql | SPARQL generation prompt |
