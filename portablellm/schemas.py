@@ -10,6 +10,10 @@ class GenerateRequest(BaseModel):
 
 class GenerateResponse(BaseModel):
     response: str
+    prompt_tokens: int
+    response_tokens: int
+    total_tokens: int
+    inference_time_seconds: float
 
 class ParallelCapacityResponse(BaseModel):
     model_id: int | None

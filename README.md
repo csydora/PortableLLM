@@ -202,7 +202,11 @@ detailed diagnostic response.
 | POST | /similarity | Cosine similarity between two texts |
 | POST | /dictionary_similarity | Score definitions against a sentence |
 
-See /docs for request schemas. Generation returns `{"response": "..."}`.
+See /docs for request schemas. Generation returns the response text along with
+`prompt_tokens`, `response_tokens`, `total_tokens`, and
+`inference_time_seconds`. Token counts come from llama.cpp usage and include the
+full model-formatted prompt and generated completion. Inference time measures
+the completion call and excludes time spent waiting for a model slot.
 RDF/SPARQL endpoints do not validate or execute generated text. Each request is
 independent; automatic conversation history and image input are not configured.
 

@@ -485,7 +485,7 @@ class LLMService:
         prompt_information: str,
         prompt_file: str = "chat.txt",
         model: int = 1,
-    ) -> str:
+    ) -> dict[str, str | int | float]:
         if not prompt_information or not prompt_information.strip():
             system_prompt = self.load_prompt_template(prompt_file, {"question": prompt})
         else:
@@ -495,9 +495,9 @@ class LLMService:
             f"System Prompt: {system_prompt[:20] + ('...' if len(system_prompt) > 20 else '')}\n"
             f"Content: {prompt[:20] + ('...' if len(prompt) > 20 else '')}"
         )
-        start = time.perf_counter()
         worker_model = self._acquire_model_slot(model)
         try:
+            inference_start = time.perf_counter()
             result = worker_model.create_chat_completion(
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -506,7 +506,9 @@ class LLMService:
                 temperature=self.config.temperature,
                 max_tokens=self.config.max_tokens,
             )
+            inference_time = time.perf_counter() - inference_start
             choice = result["choices"][0]
+            usage = result["usage"]
             content = choice["message"].get("content") or ""
             if "</think>" in content:
                 content = content.split("</think>", 1)[1].strip()
@@ -517,9 +519,14 @@ class LLMService:
 
             result_text = content.strip()
             print(f"Result: {result_text[:20] + ('...' if len(result_text) > 20 else '')}")
-            elapsed = time.perf_counter() - start
-            print(f"Inference time: {elapsed:.2f} seconds")
-            return result_text
+            print(f"Inference time: {inference_time:.2f} seconds")
+            return {
+                "response": result_text,
+                "prompt_tokens": usage["prompt_tokens"],
+                "response_tokens": usage["completion_tokens"],
+                "total_tokens": usage["total_tokens"],
+                "inference_time_seconds": inference_time,
+            }
         finally:
             self._release_model_slot(worker_model)
 

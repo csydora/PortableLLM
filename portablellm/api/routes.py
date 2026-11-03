@@ -38,7 +38,7 @@ def simple_capacity() -> SimpleCapacityResponse:
 @router.post("/generate")
 def generate(request: GenerateRequest) -> GenerateResponse:
     return GenerateResponse(
-        response=llm_service.generate(
+        **llm_service.generate(
             request.prompt,
             request.prompt_information,
             "chat.txt",
@@ -49,7 +49,7 @@ def generate(request: GenerateRequest) -> GenerateResponse:
 @router.post("/sparql")
 def sparql(request: GenerateRequest) -> GenerateResponse:
     return GenerateResponse(
-        response=llm_service.generate(
+        **llm_service.generate(
             request.prompt,
             request.prompt_information,
             "sparql.txt",
@@ -60,7 +60,7 @@ def sparql(request: GenerateRequest) -> GenerateResponse:
 @router.post("/rdf")
 def rdf(request: GenerateRequest) -> GenerateResponse:
     return GenerateResponse(
-        response=llm_service.generate(
+        **llm_service.generate(
             request.prompt,
             request.prompt_information,
             "rdf.txt",
