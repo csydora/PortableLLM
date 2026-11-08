@@ -18,7 +18,6 @@ build/
 
 # Model files
 *.gguf
-portablellm/embedding_models/*
 logs/
 .server.json
 
