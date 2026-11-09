@@ -287,7 +287,25 @@ class LLMService:
     def _build_worker_pool(self, model_number: int):
         model_path = application_path() / "portablellm" / "models" / self.config.get_model(model_number)
         if not model_path.is_file():
-            raise FileNotFoundError(f"Model not found: {model_path}")
+            download_url = self.config.get_model_download_url(model_number)
+            message = f"Model file is missing: {model_path}"
+            if download_url:
+                def quote_powershell(value):
+                    return "'" + str(value).replace("'", "''") + "'"
+
+                command = (
+                    "New-Item -ItemType Directory -Force -Path "
+                    f"{quote_powershell(model_path.parent)} | Out-Null; "
+                    f"Invoke-WebRequest -Uri {quote_powershell(download_url)} "
+                    f"-OutFile {quote_powershell(model_path)}"
+                )
+                message += f"\nDownload it with PowerShell:\n{command}"
+            else:
+                message += (
+                    f"\nNo download URL is configured for model {model_number}; "
+                    "set model_download_urls in config.json."
+                )
+            raise FileNotFoundError(message)
 
         model_size_bytes = model_path.stat().st_size
         try:

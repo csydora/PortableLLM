@@ -25,6 +25,9 @@ class ConfigService:
 
         return self.models[key]
 
+    def get_model_download_url(self, model_number: int) -> str | None:
+        return self.config.get("model_download_urls", {}).get(str(model_number))
+
     @property
     def context_size(self):
         return self.config["context_size"]
