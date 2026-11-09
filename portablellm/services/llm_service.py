@@ -9,6 +9,7 @@ import time
 from ctypes import c_void_p
 from datetime import datetime, timezone
 from threading import Condition
+from urllib.parse import unquote, urlparse
 
 import psutil
 from llama_cpp import (
@@ -293,13 +294,39 @@ class LLMService:
                 def quote_powershell(value):
                     return "'" + str(value).replace("'", "''") + "'"
 
-                command = (
-                    "New-Item -ItemType Directory -Force -Path "
-                    f"{quote_powershell(model_path.parent)} | Out-Null; "
-                    f"Invoke-WebRequest -Uri {quote_powershell(download_url)} "
-                    f"-OutFile {quote_powershell(model_path)}"
-                )
-                message += f"\nDownload it with PowerShell:\n{command}"
+                parsed_url = urlparse(download_url)
+                path_parts = [unquote(part) for part in parsed_url.path.split("/") if part]
+                try:
+                    resolve_index = path_parts.index("resolve")
+                except ValueError:
+                    resolve_index = -1
+
+                hf_cli = application_path() / ".venv" / "Scripts" / "hf.exe"
+                if (
+                    parsed_url.hostname in {"huggingface.co", "www.huggingface.co"}
+                    and resolve_index >= 2
+                    and len(path_parts) > resolve_index + 2
+                    and hf_cli.is_file()
+                ):
+                    repo_id = "/".join(path_parts[:resolve_index])
+                    revision = path_parts[resolve_index + 1]
+                    filename = "/".join(path_parts[resolve_index + 2 :])
+                    command = (
+                        "$env:HF_XET_HIGH_PERFORMANCE = '1'; "
+                        f"& {quote_powershell(hf_cli)} download "
+                        f"{quote_powershell(repo_id)} {quote_powershell(filename)} "
+                        f"--revision {quote_powershell(revision)} "
+                        f"--local-dir {quote_powershell(model_path.parent)}"
+                    )
+                    message += f"\nDownload it with the Hugging Face CLI:\n{command}"
+                else:
+                    command = (
+                        "New-Item -ItemType Directory -Force -Path "
+                        f"{quote_powershell(model_path.parent)} | Out-Null; "
+                        f"Invoke-WebRequest -Uri {quote_powershell(download_url)} "
+                        f"-OutFile {quote_powershell(model_path)}"
+                    )
+                    message += f"\nDownload it with PowerShell:\n{command}"
             else:
                 message += (
                     f"\nNo download URL is configured for model {model_number}; "
