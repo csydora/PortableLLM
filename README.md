@@ -14,10 +14,10 @@ Run this setup again if you need to reinstall the dependencies or change the GPU
 
 ### 2. Download a language model
 
-Generation needs one GGUF model file. Model files are not included in a fresh checkout. The default model is ID **1**: download [Qwen2.5 0.5B](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf) and save it here, using this exact filename:
+Generation needs one GGUF model file. Model files are not included in a fresh checkout. The default model is ID **3**: download [Qwen2.5 3B Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf) and save it here, using this exact filename:
 
 ```text
-portablellm/models/qwen2.5-0.5b-instruct-q4_k_m.gguf
+portablellm/models/Qwen2.5-3B-Instruct-Q4_K_M.gguf
 ```
 
 The included embedding model is ready to use, so similarity requests do not need another model download.
@@ -34,7 +34,7 @@ To try text generation, expand **POST /generate**, click **Try it out**, and sub
 }
 ```
 
-Model 1 is used by default. The first generation request loads the model and may take a little while. The `/docs` page is an API tool, not a chat application.
+Model 3 is used by default. The first generation request loads the model and may take a little while. The `/docs` page is an API tool, not a chat application.
 
 ### 4. Stop PortableLLM
 
@@ -44,7 +44,7 @@ Press **Ctrl+C** in the server window, or run **`stop_server.bat`**. Closing the
 
 ### Available language models
 
-Download any model you want to use and place it in `portablellm/models/` with the filename shown below. The request's `model` value selects the model. Model 1 is the default.
+Download any model you want to use and place it in `portablellm/models/` with the filename shown below. The request's `model` value selects the model. Model 3 is the default.
 
 | ID | Model | Filename | Download |
 |---:|---|---|---|

@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 class GenerateRequest(BaseModel):
     prompt: str = ""
     prompt_information: str = ""
-    model: int = 1
+    model: int = 3
 
 class GenerateResponse(BaseModel):
     response: str
