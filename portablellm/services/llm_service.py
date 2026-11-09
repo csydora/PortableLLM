@@ -305,6 +305,7 @@ class LLMService:
                     f"\nNo download URL is configured for model {model_number}; "
                     "set model_download_urls in config.json."
                 )
+            print(message, file=sys.stderr, flush=True)
             raise FileNotFoundError(message)
 
         model_size_bytes = model_path.stat().st_size
