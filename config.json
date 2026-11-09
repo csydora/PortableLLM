@@ -9,7 +9,7 @@
         "5": "Qwen3.5-4B-Q4_K_M.gguf",
         "6": "Qwen3.5-9B-Q4_K_M.gguf"
     },
-    "preload_models": [3],
+    "preload_models": [],
     "gpu_backend": "auto",
     "context_size": 8192,
     "n_gpu_layers": -1,
