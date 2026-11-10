@@ -18,14 +18,25 @@ class ConfigService:
 
     def get_model(self, model_number: int) -> str:
 
+        return self.get_model_files(model_number)[0]
+
+    def get_model_files(self, model_number: int) -> list[str]:
+
         key = str(model_number)
 
         if key not in self.models:
             raise ValueError(f"Unknown model: {model_number}")
 
-        return self.models[key]
+        model_files = self.models[key]
+        if isinstance(model_files, str):
+            return [model_files]
+        if isinstance(model_files, list) and model_files and all(
+            isinstance(model_file, str) and model_file for model_file in model_files
+        ):
+            return model_files
+        raise ValueError(f"Invalid model file configuration for model {model_number}")
 
-    def get_model_download_url(self, model_number: int) -> str | None:
+    def get_model_download_url(self, model_number: int) -> str | list[str] | None:
         return self.config.get("model_download_urls", {}).get(str(model_number))
 
     @property

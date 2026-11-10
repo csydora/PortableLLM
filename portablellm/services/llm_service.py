@@ -172,6 +172,12 @@ class LLMService:
         """Use host memory as a conservative preflight before loading contexts."""
         memory = psutil.virtual_memory()
         available = int(memory.available)
+        total = int(memory.total)
+        # A model approaching system RAM capacity should only get one context
+        # worker; additional workers can duplicate backend allocations and
+        # exhaust memory even when the GGUF weights are file-mapped.
+        if model_size_bytes >= total * 0.75:
+            return 1
         reserve = max(1024**3, int(memory.total * 0.15))
         kv_cache_bytes = self._estimate_kv_cache_bytes(metadata, model_size_bytes)
         requested_layers = int(self.config.n_gpu_layers)
@@ -286,14 +292,29 @@ class LLMService:
         return trimmed
 
     def _build_worker_pool(self, model_number: int):
-        model_path = application_path() / "portablellm" / "models" / self.config.get_model(model_number)
-        if not model_path.is_file():
-            download_url = self.config.get_model_download_url(model_number)
-            message = f"Model file is missing: {model_path}"
-            if download_url:
-                def quote_powershell(value):
-                    return "'" + str(value).replace("'", "''") + "'"
+        model_root = application_path() / "portablellm" / "models"
+        model_paths = [
+            model_root / filename for filename in self.config.get_model_files(model_number)
+        ]
+        model_path = model_paths[0]
+        missing_paths = [path for path in model_paths if not path.is_file()]
+        if missing_paths:
+            download_urls = self.config.get_model_download_url(model_number)
+            if isinstance(download_urls, str):
+                download_urls = [download_urls]
+            elif download_urls is None:
+                download_urls = []
 
+            def quote_powershell(value):
+                return "'" + str(value).replace("'", "''") + "'"
+
+            message = "Model file(s) are missing: " + ", ".join(
+                str(path) for path in missing_paths
+            )
+            hf_cli = application_path() / ".venv" / "Scripts" / "hf.exe"
+            hf_files = []
+            hf_repo_revisions = set()
+            for download_url in download_urls:
                 parsed_url = urlparse(download_url)
                 path_parts = [unquote(part) for part in parsed_url.path.split("/") if part]
                 try:
@@ -301,41 +322,57 @@ class LLMService:
                 except ValueError:
                     resolve_index = -1
 
-                hf_cli = application_path() / ".venv" / "Scripts" / "hf.exe"
                 if (
-                    parsed_url.hostname in {"huggingface.co", "www.huggingface.co"}
-                    and resolve_index >= 2
-                    and len(path_parts) > resolve_index + 2
-                    and hf_cli.is_file()
+                    parsed_url.hostname not in {"huggingface.co", "www.huggingface.co"}
+                    or resolve_index < 2
+                    or len(path_parts) <= resolve_index + 2
                 ):
-                    repo_id = "/".join(path_parts[:resolve_index])
-                    revision = path_parts[resolve_index + 1]
-                    filename = "/".join(path_parts[resolve_index + 2 :])
-                    command = (
-                        "$env:HF_XET_HIGH_PERFORMANCE = '1'; "
-                        f"& {quote_powershell(hf_cli)} download "
-                        f"{quote_powershell(repo_id)} {quote_powershell(filename)} "
-                        f"--revision {quote_powershell(revision)} "
-                        f"--local-dir {quote_powershell(model_path.parent)}"
-                    )
-                    message += f"\nDownload it with the Hugging Face CLI:\n{command}"
-                else:
-                    command = (
+                    hf_files = []
+                    break
+
+                repo_id = "/".join(path_parts[:resolve_index])
+                revision = path_parts[resolve_index + 1]
+                filename = "/".join(path_parts[resolve_index + 2 :])
+                hf_repo_revisions.add((repo_id, revision))
+                hf_files.append(filename)
+
+            if (
+                len(download_urls) == len(model_paths)
+                and len(hf_files) == len(download_urls)
+                and len(hf_repo_revisions) == 1
+                and hf_cli.is_file()
+            ):
+                repo_id, revision = next(iter(hf_repo_revisions))
+                filenames = " ".join(quote_powershell(filename) for filename in hf_files)
+                command = (
+                    "$env:HF_XET_HIGH_PERFORMANCE = '1'; "
+                    f"& {quote_powershell(hf_cli)} download "
+                    f"{quote_powershell(repo_id)} {filenames} "
+                    f"--revision {quote_powershell(revision)} "
+                    f"--local-dir {quote_powershell(model_root)}"
+                )
+                message += f"\nDownload the configured model files with the Hugging Face CLI:\n{command}"
+            elif len(download_urls) == len(model_paths):
+                commands = []
+                for model_path, download_url in zip(model_paths, download_urls):
+                    if model_path not in missing_paths:
+                        continue
+                    commands.append(
                         "New-Item -ItemType Directory -Force -Path "
                         f"{quote_powershell(model_path.parent)} | Out-Null; "
                         f"Invoke-WebRequest -Uri {quote_powershell(download_url)} "
                         f"-OutFile {quote_powershell(model_path)}"
                     )
-                    message += f"\nDownload it with PowerShell:\n{command}"
+                message += "\nDownload the missing model files with PowerShell:\n" + ";\n".join(commands)
             else:
                 message += (
-                    f"\nNo download URL is configured for model {model_number}; "
-                    "set model_download_urls in config.json."
+                    f"\nDownload URLs are not configured for every file in model {model_number}; "
+                    "set matching model_download_urls in config.json."
                 )
             print(message, file=sys.stderr, flush=True)
             raise FileNotFoundError(message)
 
-        model_size_bytes = model_path.stat().st_size
+        model_size_bytes = sum(path.stat().st_size for path in model_paths)
         try:
             metadata = self._model_metadata(str(model_path))
         except Exception:
@@ -581,7 +618,10 @@ class LLMService:
             model_number = self._current_model
             model_file = None
             if model_number is not None:
-                model_file = self.config.get_model(model_number)
+                model_files = self.config.get_model_files(model_number)
+                model_file = model_files[0]
+                if len(model_files) > 1:
+                    model_file += f" (+{len(model_files) - 1} shards)"
             return {
                 "model_id": model_number,
                 "model_file": model_file,

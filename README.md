@@ -44,7 +44,7 @@ Press **Ctrl+C** in the server window, or run **`stop_server.bat`**. Closing the
 
 ### Available language models
 
-Download any model you want to use and place it in `portablellm/models/` with the filename shown below. The request's `model` value selects the model. Model 3 is the default.
+Download the model file or files into `portablellm/models/`, preserving the paths shown below. The request's `model` value selects the model. Model 3 is the default.
 
 | ID | Model | Filename | Download |
 |---:|---|---|---|
@@ -54,8 +54,10 @@ Download any model you want to use and place it in `portablellm/models/` with th
 | 4 | Qwen3 8B | `Qwen_Qwen3-8B-Q4_K_M.gguf` | [Download](https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/main/Qwen3-8B-Q4_K_M.gguf) |
 | 5 | Qwen3.5 4B | `Qwen3.5-4B-Q4_K_M.gguf` | [Download](https://huggingface.co/unsloth/Qwen3.5-4B-GGUF/resolve/e87f176479d0855a907a41277aca2f8ee7a09523/Qwen3.5-4B-Q4_K_M.gguf) |
 | 6 | Qwen3.5 9B | `Qwen3.5-9B-Q4_K_M.gguf` | [Download](https://huggingface.co/unsloth/Qwen3.5-9B-GGUF/resolve/3885219b6810b007914f3a7950a8d1b469d598a5/Qwen3.5-9B-Q4_K_M.gguf) |
+| 7 | Qwen3.6 35B-A3B | `Qwen3.6-35B-A3B-Q4_K_M.gguf` (about 20.5 GB) | [Download](https://huggingface.co/ggml-org/Qwen3.6-35B-A3B-GGUF/resolve/main/Qwen3.6-35B-A3B-Q4_K_M.gguf) |
+| 8 | Qwen3.8-Flash-Next (UD-Q4_K_XL) | Four GGUF shards under `UD-Q4_K_XL/` (about 111 GB total; one worker, tight on 128 GB system RAM) | [Model files](https://huggingface.co/unsloth/Qwen3.8-Flash-Next-GGUF/tree/main/UD-Q4_K_XL) |
 
-If a requested model file is missing, the API returns an error with a PowerShell command to download it. Change the available model filenames and download URLs in `config.json`; change the default model ID in `portablellm/schemas.py`.
+If requested model files are missing, the API returns an error with a PowerShell command to download them. Change the available model filenames and download URLs in `config.json`; change the default model ID in `portablellm/schemas.py`. Model downloads are not automatic: run the command shown by the API.
 
 ### API endpoints
 
@@ -76,6 +78,6 @@ The API listens on `127.0.0.1:8000` by default. Open `/docs` while the server is
 
 `update_dependencies.bat` reads `gpu_backend` from `config.json`, which defaults to `auto`. Automatic selection looks for NVIDIA or AMD hardware; backend setup can fall back to Vulkan or CPU when appropriate. Set `gpu_backend` to `cuda`, `hip`, `vulkan`, or `cpu` to choose a backend manually, then run `update_dependencies.bat` again. GPU use depends on compatible drivers and runtimes; the service can also run on CPU.
 
-Edit `config.json` to change the local address, model files, context size, generation settings, or request limits. Restart the server after changing configuration. Larger models and context sizes need more memory. The service adjusts the number of simultaneous generation contexts to available resources.
+Edit `config.json` to change the local address, model files, context size, generation settings, or request limits. Restart the server after changing configuration. Model entries may name one GGUF file or a list of shards. Larger models and context sizes need more memory. The service adjusts the number of simultaneous generation contexts to available resources.
 
 PortableLLM is built with FastAPI, llama-cpp-python, and Sentence Transformers. The `installation/` folder contains the pinned Python dependencies and backend setup files; `logs/` contains runtime logs.
